@@ -149,29 +149,37 @@ class HK_Controller:
     def get_behavior(self):
         return self.behavior
 
-    def start_listeners(self):
+    def start_listener(self, for_key):
+        hotkey = self.key_list.get(for_key)
+
         if self.behavior.log_debug:
-            print(f"Starting hotkey listeners")
+            print(f"Starting listener for: {repr(hotkey)}")
 
-        for key in self.key_list.keys():
+        add_hotkey(for_key, hotkey.toggle)
 
-            hotkey = self.key_list.get(key)
+        self.active_keys.update({for_key: hotkey})
 
-            if self.behavior.log_debug:
-                print(f"\t- Adding hotkey: {repr(hotkey)}")
+        if self.behavior.log_debug:
+            print(f"\t-Success")
 
-            add_hotkey(key, hotkey.toggle)
+    def start_all_listeners(self):
+        if self.behavior.log_debug:
+            print(f"Starting all hotkey listeners")
 
-            self.active_keys.update({key: hotkey})
+        active_keys_cache = self.active_keys.keys()
+        for key in filter(lambda i: i not in active_keys_cache, self.key_list.keys()):
+            self.start_listener(key)
 
-            if self.behavior.log_debug:
-                print(f"\t\t-Success")
+        if self.behavior.log_debug:
+            print(f"Started all hotkey listeners")
 
-    def register(self, key: HK_Interface):
+    def register(self, key: HK_Interface, start_listener: bool = True):
         if self.behavior.log_debug:
             print(f"Mapping key: {repr(key.binding)} thru 'HK_Controller.register()'")
 
         self.__map_hotkey__(key)
+        if start_listener:
+            self.start_listener(key.binding)
 
     def cleanup(self):
         if self.behavior.log_debug:
@@ -227,6 +235,6 @@ if __name__ == "__main__":
     walk.get_behavior().log_debug = True
 
     controller.register(walk)
-    controller.start_listeners()
+    controller.start_all_listeners()
 
     controller.wait()
