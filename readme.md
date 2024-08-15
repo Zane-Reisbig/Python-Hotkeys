@@ -3,28 +3,22 @@
 ### Example Usage
 
 ```python
-from lib.Hotkey import Hotkey, HK_State, HK_Behavior
-from keyboard import press, release
+if __name__ == "__main__":
+    from lib.Hotkey import HK_Controller, Hotkey
 
-class PressW(Hotkey):
-    behavior = HK_Behavior()
-    behavior.wait_for_release = True
+    print("--")
+    print()
 
-    binding = "alt+w"
+    controller = HK_Controller()
+    controller.get_behavior().log_debug = True
 
-    def toggle(state: HK_Behavior):
-        if state == HK_Behavior.ACTIVATING:
-            press("w")
+    walk = Hotkey("alt+1", lambda: print("Hello, "), lambda: print("World!"))
+    walk.get_behavior()
 
-        else:
-            release("w")
+    controller.register(walk)
+    controller.start_listeners()
 
-def main():
-    PressW()
-    wait()
-
-main()
-
+    controller.wait()
 ```
 
 #### That's all there is to it!
