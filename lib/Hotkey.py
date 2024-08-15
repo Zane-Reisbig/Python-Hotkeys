@@ -51,12 +51,12 @@ class HK_Interface(metaclass=ABCMeta):
 
     def toggle(self):
         if self.behavior.log_debug:
-            print(f"Toggling {repr(self.binding)} with {repr(self.state)}")
+            print(f"Toggling {repr(self.binding)} with {HK_State.to_str(self.state)}")
 
         match (self.state):
             case HK_State.ACTIVE:
                 if self.behavior.log_debug:
-                    print(f"\t- Calling 'on()' state")
+                    print(f"\t- Calling 'off()' state")
 
                 self.off()
 
@@ -67,7 +67,7 @@ class HK_Interface(metaclass=ABCMeta):
 
             case HK_State.DISABLED:
                 if self.behavior.log_debug:
-                    print(f"\t- Calling 'off()' state")
+                    print(f"\t- Calling 'on()' state")
 
                 self.on()
 
@@ -99,6 +99,12 @@ class HK_Interface(metaclass=ABCMeta):
 
 
 class Hotkey(HK_Interface):
+    """
+    Quick HK_Interface macro
+
+    Implement HK_Interface to adhere to the 'Hotkey' Protocall
+    """
+
     on = None
     off = None
     binding = None
