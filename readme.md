@@ -13,7 +13,7 @@ if __name__ == "__main__":
     controller.get_behavior().log_debug = True
 
     walk = Hotkey("alt+1", lambda: print("Hello, "), lambda: print("World!"))
-    walk.get_behavior()
+    walk.get_behavior().log_debug = True
 
     controller.register(walk)
     controller.start_listeners()
