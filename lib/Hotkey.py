@@ -9,6 +9,7 @@ from threading import Thread, Event
 class HK_Behavior:
     wait_for_release: bool = False
     log_debug: bool = False
+    one_state = True
 
 
 @dataclass
@@ -76,13 +77,17 @@ class HK_Interface(metaclass=ABCMeta):
 
                 pass
 
-        if self.behavior.log_debug:
-            print(f"\t- Inverting State from '{HK_State.to_str(self.state)}'")
+        if not self.behavior.one_state:
+            if self.behavior.log_debug:
+                print(f"\t- Inverting State from '{HK_State.to_str(self.state)}'")
 
-        self.state = HK_State.invert(self.state)
+            self.state = HK_State.invert(self.state)
 
         if self.behavior.log_debug:
-            print(f"\t- State set to '{HK_State.to_str(self.state)}'")
+            if self.behavior.one_state:
+                print("\t- Single state Hotkey, state unchanged")
+            else:
+                print(f"\t- State set to '{HK_State.to_str(self.state)}'")
 
     @property
     @abstractmethod
@@ -142,7 +147,7 @@ class HK_Controller:
             )
 
         if self.behavior.log_debug:
-            print(f"{repr(key)} -> Registered")
+            print(f"Registered: {repr(key)}")
 
         self.key_list.update({key.binding: key})
 
@@ -173,7 +178,15 @@ class HK_Controller:
         if self.behavior.log_debug:
             print(f"Started all hotkey listeners")
 
-    def register(self, key: HK_Interface, start_listener: bool = True):
+    def register(self, key: HK_Interface, start_listener: bool = False):
+        """
+        Registers a hotkey for activation
+
+        !! Does not start the hotkey listener !!
+
+        !! flip 'start_listener' or call 'start_all_listeners' !!
+        """
+
         if self.behavior.log_debug:
             print(f"Mapping key: {repr(key.binding)} thru 'HK_Controller.register()'")
 
@@ -194,7 +207,7 @@ class HK_Controller:
             remove_hotkey(key)
 
             if self.behavior.log_debug:
-                print(f"\t\t-Success")
+                print(f"\t\t--Success")
 
         self.active_keys = {}
 
@@ -229,12 +242,11 @@ if __name__ == "__main__":
     print()
 
     controller = HK_Controller()
-    controller.get_behavior().log_debug = True
+    controller.behavior.log_debug = True
 
     walk = Hotkey("alt+1", lambda: print("Hello, "), lambda: print("World!"))
-    walk.get_behavior().log_debug = True
+    walk.behavior.log_debug = True
+    walk.behavior.one_state = True
 
     controller.register(walk)
-    controller.start_all_listeners()
-
     controller.wait()
