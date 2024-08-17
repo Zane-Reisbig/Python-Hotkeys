@@ -3,13 +3,16 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, fields
 from typing import Callable
 from threading import Thread, Event
+from time import sleep
 
 
 @dataclass
 class HK_Behavior:
     wait_for_release: bool = False
     log_debug: bool = False
-    one_state = True
+    one_state = False
+    repeat: bool = False
+    repeat_delay: int = 0.2
 
 
 @dataclass
@@ -41,14 +44,45 @@ class HK_State:
 class HK_Interface(metaclass=ABCMeta):
 
     def __init__(self, *args, **kwargs):
+        self.stop_event = self.__generate_stop__()
         self.state = HK_State.DISABLED
         self.behavior = HK_Behavior()
 
-    def get_behavior(self):
-        return self.behavior
+        self.__active_threads__: list[Thread] = []
 
     def __repr__(self) -> str:
         return f"HotkeyInterface(binding='{self.binding}', on='{self.on.__name__}()', off='{self.off.__name__}()')"
+
+    def __generate_stop__(self):
+        return Event()
+
+    def __start_repeat_thread__(self):
+
+        def repeat_thread():
+            while True and not self.stop_event.is_set():
+                if self.behavior.log_debug:
+                    print(f"\t\t- Calling user 'on()'")
+
+                self.on()
+                if self.behavior.log_debug:
+                    print(f"\t\t- Done...")
+                    print(f"\t\t- Waiting: {self.behavior.repeat_delay}s")
+
+                sleep(self.behavior.repeat_delay)
+
+        if self.behavior.log_debug:
+            print(f"\t\t- Starting thread")
+
+        t = Thread(target=repeat_thread)
+        t.start()
+
+        self.__active_threads__.append(t)
+
+        if self.behavior.log_debug:
+            print(f"\t\t- Thread Starter done...")
+
+    def get_behavior(self):
+        return self.behavior
 
     def toggle(self):
         if self.behavior.log_debug:
@@ -59,7 +93,24 @@ class HK_Interface(metaclass=ABCMeta):
                 if self.behavior.log_debug:
                     print(f"\t- Calling 'off()' state")
 
-                self.off()
+                if self.behavior.repeat:
+                    if self.behavior.log_debug:
+                        print(f"\t- Stoping all threads")
+
+                    self.stop_event.set()
+                    for t in self.__active_threads__:
+                        t.join()
+
+                    if self.behavior.log_debug:
+                        print(f"\t\t- All threads stopped...")
+                        print(f"\t- Generating new stop event...")
+
+                    self.stop_event = self.__generate_stop__()
+
+                    if self.behavior.log_debug:
+                        print(f"\t\t- Done")
+                else:
+                    self.off()
 
                 if self.behavior.log_debug:
                     print(f"\t\t--Success")
@@ -70,7 +121,16 @@ class HK_Interface(metaclass=ABCMeta):
                 if self.behavior.log_debug:
                     print(f"\t- Calling 'on()' state")
 
-                self.on()
+                if self.behavior.repeat:
+                    if self.behavior.log_debug:
+                        print(f"\t- Starting repeat thread")
+
+                    self.__start_repeat_thread__()
+
+                    if self.behavior.log_debug:
+                        print(f"\t- Started...")
+                else:
+                    self.on()
 
                 if self.behavior.log_debug:
                     print(f"\t\t-- Success")
@@ -115,7 +175,10 @@ class Hotkey(HK_Interface):
     binding = None
 
     def __init__(
-        self, binding: str, on: Callable[[], None], off: Callable[[], None]
+        self,
+        binding: str,
+        on: Callable[[], None],
+        off: Callable[[], None] = lambda: None,
     ) -> None:
         super().__init__()
 
@@ -238,15 +301,22 @@ class HK_Controller:
 
 
 if __name__ == "__main__":
+    from mouse import click
+
     print("--")
     print()
 
     controller = HK_Controller()
     controller.behavior.log_debug = True
 
-    walk = Hotkey("alt+1", lambda: print("Hello, "), lambda: print("World!"))
-    walk.behavior.log_debug = True
-    walk.behavior.one_state = True
+    # walk = Hotkey("alt+1", lambda: print("Hello, "), lambda: print("World!"))
+    # walk.behavior.log_debug = True
+    # walk.behavior.one_state = True
 
-    controller.register(walk)
+    click_lots = Hotkey("alt+c", lambda: click("left"))
+    click_lots.behavior.repeat = True
+    click_lots.behavior.repeat_delay = 0.09
+    click_lots.behavior.log_debug = False
+
+    controller.register(click_lots, True)
     controller.wait()
